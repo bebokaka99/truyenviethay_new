@@ -6,7 +6,7 @@ require("dotenv").config();
 const db = require("./config/db");
 const path = require("path");
 
-const cors = require("cors");
+const cors = require("cors"); // Import cors
 const helmet = require("helmet");
 const compression = require("compression");
 const xssClean = require("xss-clean");
@@ -16,6 +16,7 @@ const logger = require("./ultils/logger");
 const errorMiddleware = require("./middleware/errorHandler");
 
 // Security middlewares
+// Áp dụng CORS cho TẤT CẢ các request, bao gồm cả file tĩnh
 app.use(
     cors({
         origin: "http://localhost:5173",
@@ -37,24 +38,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 app.options("*", cors());
+
+// Phục vụ file tĩnh từ thư mục public. Đảm bảo CORS đã được cấu hình trước đó.
 const publicPath = path.resolve(__dirname, "public");
 app.use(express.static(publicPath));
 console.log("🧭 Static path:", path.join(__dirname, "public"));
 
-app.use(
-    helmet({
-        crossOriginResourcePolicy: { policy: "cross-origin" },
-    })
-);
-
-app.use(
-    "/uploads_img",
-    (req, res, next) => {
-        res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
-        next();
-    },
-    express.static(path.join(__dirname, "public/uploads_img"))
-);
+// Loại bỏ đoạn middleware CORS riêng cho /uploads_img vì đã có CORS toàn cục
+// app.use(
+//     "/uploads_img",
+//     (req, res, next) => {
+//         res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+//         next();
+//     },
+//     express.static(path.join(__dirname, "public/uploads_img"))
+// );
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
