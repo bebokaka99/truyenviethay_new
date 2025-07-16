@@ -12,18 +12,30 @@ const uploadStory = async (req, res) => {
       return res.status(400).json({ message: "Ảnh bìa là bắt buộc" });
     }
 
+    // Cập nhật logic validation để bao gồm các trường mới
     if (
-      !data.ten_truyen || 
-      !data.tac_gia ||     
-      !data.mo_ta ||
-      !data.chuong_mau ||
-      !data.theloai_ids || // Đã sửa từ data.the_loai_ids thành data.theloai_ids
-      !Array.isArray(data.theloai_ids) || // Thêm kiểm tra Array.isArray
-      data.theloai_ids.length === 0 // Thêm kiểm tra độ dài mảng
+      !data.ten_truyen || data.ten_truyen.trim() === '' ||
+      !data.tac_gia || data.tac_gia.trim() === '' ||     
+      !data.mo_ta || data.mo_ta.trim() === '' ||
+      !data.muc_tieu || data.muc_tieu.trim() === '' || // Thêm validation cho muc_tieu
+      !data.doi_tuong_doc_gia || data.doi_tuong_doc_gia.trim() === '' || // Thêm validation cho doi_tuong_doc_gia
+      !data.chuong_mau || data.chuong_mau.trim() === '' || data.chuong_mau.trim() === '<p></p>' ||
+      !data.theloai_ids || 
+      !Array.isArray(data.theloai_ids) || 
+      data.theloai_ids.length === 0 
     ) {
+      let missingField = '';
+      if (!data.ten_truyen || data.ten_truyen.trim() === '') missingField = 'Tên truyện';
+      else if (!data.tac_gia || data.tac_gia.trim() === '') missingField = 'Tác giả';
+      else if (!data.mo_ta || data.mo_ta.trim() === '') missingField = 'Mô tả';
+      else if (!data.muc_tieu || data.muc_tieu.trim() === '') missingField = 'Mục tiêu'; // Message cho muc_tieu
+      else if (!data.doi_tuong_doc_gia || data.doi_tuong_doc_gia.trim() === '') missingField = 'Đối tượng độc giả'; // Message cho doi_tuong_doc_gia
+      else if (!data.chuong_mau || data.chuong_mau.trim() === '' || data.chuong_mau.trim() === '<p></p>') missingField = 'Nội dung chương mẫu';
+      else if (!data.theloai_ids || !Array.isArray(data.theloai_ids) || data.theloai_ids.length === 0) missingField = 'Thể loại';
+
       return res
         .status(400)
-        .json({ message: "Các trường thông tin không được để trống" });
+        .json({ message: `Vui lòng điền đầy đủ thông tin: ${missingField}` });
     }
 
     const anh_bia = file.filename;
@@ -47,9 +59,9 @@ const uploadStory = async (req, res) => {
       tinh_trang: data.tinh_trang || "Đang viết",
       trang_thai_viet: data.trang_thai_viet || "Bản nháp",
       yeu_to_nhay_cam: data.yeu_to_nhay_cam || 0,
-      link_nguon: data.link_nguon || null,
-      muc_tieu: data.muc_tieu || null,
-      doi_tuong_doc_gia: data.doi_tuong_doc_gia || null,
+      link_nguon: data.link_nguon || null, // Truyền link_nguon
+      muc_tieu: data.muc_tieu || null,     // Truyền muc_tieu
+      doi_tuong_doc_gia: data.doi_tuong_doc_gia || null, // Truyền doi_tuong_doc_gia
       thoi_gian_cap_nhat: now,
       anh_bia,
       trang_thai_kiem_duyet, 
@@ -60,13 +72,13 @@ const uploadStory = async (req, res) => {
       danh_gia_sang_tao: 0,
     });
 
-    if (Array.isArray(data.theloai_ids) && data.theloai_ids.length > 0) { // Đã sửa từ data.the_loai_ids thành data.theloai_ids
-      await StoryModel.addGenresForStory(storyId, data.theloai_ids); // Đã sửa từ data.the_loai_ids thành data.theloai_ids
+    if (Array.isArray(data.theloai_ids) && data.theloai_ids.length > 0) {
+      await StoryModel.addGenresForStory(storyId, data.theloai_ids); 
     }
 
     await ChapterModel.createSampleChapter({
       truyen_id: storyId,
-      noi_dung: data.chuong_mau,
+      noi_dung: data.chuong_mau, 
       thoi_gian_dang: now,
     });
 

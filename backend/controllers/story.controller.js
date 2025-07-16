@@ -2,18 +2,32 @@ const StoryModel = require("../models/story.model");
 const storyService = require("../services/story.sevices");
 const generateSlug = require("../ultils/slugify"); 
 
-// Lấy danh sách tất cả truyện
 const getAllStories = async (req, res) => {
   try {
-    const stories = await StoryModel.getAll();
-    res.status(200).json(stories);
+    const {
+      page,
+      limit,
+      trang_thai_kiem_duyet,
+      keyword,
+      author_id,
+      category_id,
+    } = req.query;
+
+    const result = await StoryModel.getAll({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      trang_thai_kiem_duyet,
+      keyword,
+      author_id: parseInt(author_id),
+      category_id: parseInt(category_id),
+    });
+    res.status(200).json(result);
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách truyện:", error);
+    console.error("Lỗi khi lấy danh sách truyện (Admin):", error);
     res.status(500).json({ message: "Lỗi khi lấy danh sách truyện" });
   }
 };
 
-// Lấy truyện public đã duyệt
 const getPublicStories = async (req, res) => {
   try {
     const { page, limit, sort_by, order, keyword } = req.query;
@@ -31,11 +45,11 @@ const getPublicStories = async (req, res) => {
   }
 };
 
-// Lấy thông tin truyện theo ID
 const getStoryById = async (req, res) => {
   try {
     const storyId = req.params.id;
-    const story = await StoryModel.getById(storyId);
+    // Gọi StoryModel.getById để lấy thông tin chi tiết truyện và chương mẫu
+    const story = await StoryModel.getById(storyId); 
 
     if (!story) {
       return res.status(404).json({ message: "Không tìm thấy truyện" });
@@ -48,7 +62,6 @@ const getStoryById = async (req, res) => {
   }
 };
 
-// Lấy thông tin truyện theo slug (dùng cho frontend)
 const getStoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -64,7 +77,6 @@ const getStoryBySlug = async (req, res) => {
   }
 };
 
-// Cập nhật thông tin truyện
 const updateStory = async (req, res) => {
   const storyId = req.params.id;
   const { ten_truyen, tac_gia, mo_ta, trang_thai } = req.body;
@@ -77,7 +89,6 @@ const updateStory = async (req, res) => {
         .json({ message: "Không tìm thấy truyện để cập nhật" });
     }
 
-    // Phân quyền
     const user = req.user;
     if (user.role !== "admin" && user.id !== existingStory.user_id) {
       return res
@@ -85,10 +96,8 @@ const updateStory = async (req, res) => {
         .json({ message: "Bạn không có quyền sửa truyện này" });
     }
 
-    // Tạo slug từ tên truyện mới nếu có thay đổi
     const slug = generateSlug(ten_truyen);
 
-    // Chuẩn bị dữ liệu cần cập nhật
     const updatedData = {
       ten_truyen,
       tac_gia,
@@ -98,9 +107,10 @@ const updateStory = async (req, res) => {
       thoi_gian_cap_nhat: new Date(),
     };
 
-    // Kiểm tra ảnh bìa
     if (req.file) {
-      updatedData.anh_bia = "/uploads_img/bia_truyen/" + req.file.filename;
+      updatedData.anh_bia = req.file.filename; // Chỉ lưu tên file
+    } else {
+      updatedData.anh_bia = existingStory.anh_bia; // Giữ nguyên ảnh bìa cũ nếu không có file mới
     }
 
     const affectedRows = await StoryModel.update(storyId, updatedData);
@@ -117,7 +127,6 @@ const updateStory = async (req, res) => {
   }
 };
 
-// Xóa truyện
 const deleteStory = async (req, res) => {
   try {
     const storyId = req.params.id;
@@ -127,7 +136,6 @@ const deleteStory = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy truyện để xoá" });
     }
 
-    // Phân quyền: admin hoặc author chính chủ
     const user = req.user;
     if (user.role !== "admin" && user.id !== existingStory.user_id) {
       return res
@@ -142,7 +150,7 @@ const deleteStory = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi xoá truyện" });
   }
 };
-// Lấy danh sách truyện chờ duyệt
+
 const getPendingApproval = async (req, res) => {
   try {
     const stories = await StoryModel.getPendingApproval();
@@ -155,9 +163,8 @@ const getPendingApproval = async (req, res) => {
   }
 };
 
-// Duyệt hoặc từ chối truyện
 const approveOrRejectStory = async (req, res) => {
-  const { action } = req.body; // action có thể là 'duyet' hoặc 'tu_choi'
+  const { action } = req.body;
   const storyId = req.params.id;
 
   if (!action) {
@@ -175,22 +182,18 @@ const approveOrRejectStory = async (req, res) => {
   }
 };
 
-// Tác giả xem truyện của chính mình
 const getMyStories = async (req, res) => {
-  const userId = req.user.id; // Lấy userId từ JWT payload
+  const userId = req.user.id;
 
-  console.log("User ID:", userId); 
+  console.log("User ID:", userId);
 
   try {
-    // Lấy truyện của tác giả từ model
     const stories = await StoryModel.getByAuthor(userId);
 
-    // Kiểm tra nếu không có truyện nào
     if (!stories || stories.length === 0) {
       return res.status(200).json({ message: "Bạn chưa đăng truyện nào." });
     }
 
-    // Trả về danh sách truyện của tác giả
     res.json(stories);
   } catch (err) {
     console.error("Lỗi khi lấy truyện cá nhân:", err);
@@ -198,7 +201,6 @@ const getMyStories = async (req, res) => {
   }
 };
 
-// Admin lọc theo tác giả cụ thể
 const getStoriesByUserId = async (req, res) => {
   const userId = parseInt(req.params.userId);
   if (isNaN(userId)) {

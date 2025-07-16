@@ -1,0 +1,541 @@
+<template>
+  <div class="admin-story-management">
+    <h1 class="page-title">Quản lý Truyện</h1>
+
+    <StoryFiltersSection
+      :categories="categories"
+      :initial-filters="filters"
+      @apply-filters="handleApplyFilters"
+      @clear-filters="handleClearFilters"
+    />
+
+    <StoryTableSection
+      :stories="storyStore.adminStories"
+      :loading="storyStore.adminStoriesLoading"
+      @approve="handleApproveStory"
+      @reject="handleRejectStory"
+      @view-details="handleViewDetails"
+      @delete="handleDeleteStory"
+    />
+
+    <PaginationSection
+      v-if="storyStore.adminStoriesPagination.total_pages > 1"
+      :current-page="storyStore.adminStoriesPagination.current_page"
+      :total-pages="storyStore.adminStoriesPagination.total_pages"
+      @goToPage="handleGoToPage"
+    />
+
+    <BaseModal :is-open="isViewDetailsModalOpen" @close="closeViewDetailsModal" title="Chi tiết Truyện và Duyệt">
+      <div v-if="currentStoryDetails">
+        <div class="story-details-content">
+          <div class="story-cover-display">
+            <h3>Ảnh bìa truyện:</h3>
+            <img
+              v-if="currentStoryDetails.anh_bia_url"
+              :src="currentStoryDetails.anh_bia_url"
+              alt="Ảnh bìa"
+              class="story-cover-large"
+              crossorigin="anonymous"
+              @error="handleModalImageError"
+            />
+            <div v-else class="no-image-placeholder-large">
+              <i class="fas fa-image"></i>
+              <span>Không có ảnh bìa</span>
+            </div>
+          </div>
+
+          <div class="story-info-grid">
+            <div class="info-item"><strong>ID:</strong> {{ currentStoryDetails.id }}</div>
+            <div class="info-item"><strong>Tên truyện:</strong> {{ currentStoryDetails.ten_truyen }}</div>
+            <div class="info-item"><strong>Tác giả:</strong> {{ currentStoryDetails.tac_gia }}</div>
+            <div class="info-item"><strong>Slug:</strong> {{ currentStoryDetails.slug }}</div>
+            <div class="info-item"><strong>Trạng thái:</strong> {{ currentStoryDetails.trang_thai }}</div>
+            <div class="info-item"><strong>Tình trạng:</strong> {{ currentStoryDetails.tinh_trang }}</div>
+            <div class="info-item"><strong>Trạng thái viết:</strong> {{ currentStoryDetails.trang_thai_viet }}</div>
+            <div class="info-item"><strong>Yếu tố nhạy cảm:</strong> {{ currentStoryDetails.yeu_to_nhay_cam ? 'Có' : 'Không' }}</div>
+            <div class="info-item"><strong>Link nguồn:</strong> <a :href="currentStoryDetails.link_nguon" target="_blank">{{ currentStoryDetails.link_nguon || 'N/A' }}</a></div>
+            <div class="info-item"><strong>Mục tiêu:</strong> {{ currentStoryDetails.muc_tieu }}</div>
+            <div class="info-item"><strong>Đối tượng độc giả:</strong> {{ currentStoryDetails.doi_tuong_doc_gia }}</div>
+            <div class="info-item"><strong>Thời gian cập nhật:</strong> {{ formatDate(currentStoryDetails.thoi_gian_cap_nhat) }}</div>
+            <div class="info-item"><strong>Trạng thái kiểm duyệt:</strong> <span :class="['status-badge', getStatusClass(currentStoryDetails.trang_thai_kiem_duyet)]">{{ formatStatus(currentStoryDetails.trang_thai_kiem_duyet) }}</span></div>
+          </div>
+
+          <div class="story-description">
+            <h3>Mô tả:</h3>
+            <p>{{ currentStoryDetails.mo_ta }}</p>
+          </div>
+
+          <div class="admin-notes">
+            <h3>Ghi chú Admin:</h3>
+            <textarea v-model="currentStoryDetails.ghi_chu_admin" rows="3" placeholder="Thêm ghi chú của admin..."></textarea>
+          </div>
+
+          <div class="story-ratings">
+            <h3>Đánh giá nội dung:</h3>
+            <input type="number" v-model.number="currentStoryDetails.danh_gia_noi_dung" min="0" max="10" />
+            <h3>Đánh giá văn phong:</h3>
+            <input type="number" v-model.number="currentStoryDetails.danh_gia_van_phong" min="0" max="10" />
+            <h3>Đánh giá sáng tạo:</h3>
+            <input type="number" v-model.number="currentStoryDetails.danh_gia_sang_tao" min="0" max="10" />
+          </div>
+
+          <div class="chapters-preview-section">
+            <h3>Chương mẫu / Chương đầu tiên:</h3>
+            <p v-if="currentStoryDetails.sample_chapter_content" v-html="currentStoryDetails.sample_chapter_content"></p>
+            <p v-else>Không có chương mẫu hoặc nội dung chương đầu tiên được cung cấp.</p>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button @click="submitApproval('duyet')" class="action-btn approve-btn">Duyệt truyện</button>
+          <button @click="submitApproval('tu_choi')" class="action-btn reject-btn">Từ chối truyện</button>
+          <button @click="closeViewDetailsModal" class="action-btn cancel-btn">Đóng</button>
+        </div>
+      </div>
+      <div v-else class="loading-modal-content">Đang tải thông tin truyện...</div>
+    </BaseModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+import StoryFiltersSection from '@/components/admin/StoryFiltersSection.vue';
+import StoryTableSection from '@/components/admin/StoryTableSection.vue';
+import PaginationSection from '@/components/admin/PaginationSection.vue'; // Giả định component này đã tồn tại
+import BaseModal from '@/components/common/BaseModal.vue';
+import { useStoryTextStore } from '@/modules/storyText/storyText.store';
+import { useCategoryStore } from '@/modules/category/category.store';
+import { useToast } from 'vue-toastification'; // Import useToast
+
+const storyStore = useStoryTextStore();
+const categoryStore = useCategoryStore();
+const toast = useToast(); // Khởi tạo toast
+
+const filters = ref({
+  page: 1,
+  limit: 10,
+  trang_thai_kiem_duyet: '',
+  keyword: '',
+  author_id: null,
+  category_id: null,
+});
+
+const isViewDetailsModalOpen = ref(false);
+const currentStoryDetails = ref<any>(null); 
+const categories = ref<any[]>([]);
+
+const fetchStories = () => {
+  storyStore.fetchAdminStories(filters.value);
+};
+
+onMounted(async () => {
+  fetchStories();
+  await categoryStore.fetchAllCategories();
+  categories.value = categoryStore.categories;
+});
+
+watch(filters, () => {
+  fetchStories();
+}, { deep: true });
+
+const handleApplyFilters = (newFilters: any) => {
+  filters.value = { ...filters.value, ...newFilters, page: 1 };
+};
+
+const handleClearFilters = () => {
+  filters.value = {
+    page: 1,
+    limit: 10,
+    trang_thai_kiem_duyet: '',
+    keyword: '',
+    author_id: null,
+    category_id: null,
+  };
+};
+
+const handleGoToPage = (page: number) => {
+  filters.value.page = page;
+};
+
+const handleApproveStory = async (storyId: number) => {
+  if (confirm('Bạn có chắc chắn muốn DUYỆT truyện này không?')) {
+    try {
+      await storyStore.approveOrRejectStory(storyId, 'duyet');
+    } catch (error) {
+      console.error("Lỗi khi duyệt truyện:", error);
+      toast.error("Có lỗi xảy ra khi duyệt truyện.");
+    }
+  }
+};
+
+const handleRejectStory = async (storyId: number) => {
+  if (confirm('Bạn có chắc chắn muốn TỪ CHỐI truyện này không?')) {
+    try {
+      await storyStore.approveOrRejectStory(storyId, 'tu_choi');
+    } catch (error) {
+      console.error("Lỗi khi từ chối truyện:", error);
+      toast.error("Có lỗi xảy ra khi từ chối truyện.");
+    }
+  }
+};
+
+const handleViewDetails = async (storyId: number) => {
+  isViewDetailsModalOpen.value = true;
+  currentStoryDetails.value = null; 
+
+  try {
+    const story = await storyStore.fetchStoryById(storyId); 
+    if (story) {
+        currentStoryDetails.value = {
+            ...story, 
+            anh_bia_url: story.anh_bia ? `http://localhost:3000/uploads_img/bia_truyen/${story.anh_bia}` : null,
+        };
+    } else {
+        console.error("Không tìm thấy truyện với ID:", storyId);
+        toast.error("Không tìm thấy thông tin chi tiết truyện.");
+        isViewDetailsModalOpen.value = false;
+    }
+  } catch (error) {
+    console.error("Lỗi khi tải thông tin truyện để xem chi tiết:", error);
+    toast.error("Không thể tải thông tin chi tiết truyện.");
+    isViewDetailsModalOpen.value = false;
+  }
+};
+
+const closeViewDetailsModal = () => {
+  isViewDetailsModalOpen.value = false;
+  currentStoryDetails.value = null;
+};
+
+const submitApproval = async (action: 'duyet' | 'tu_choi') => {
+  if (!currentStoryDetails.value || !currentStoryDetails.value.id) {
+    toast.error('Không có thông tin truyện để xử lý.');
+    return;
+  }
+
+  const confirmMessage = action === 'duyet' 
+    ? 'Bạn có chắc chắn muốn DUYỆT truyện này không?' 
+    : 'Bạn có chắc chắn muốn TỪ CHỐI truyện này không?';
+
+  if (confirm(confirmMessage)) {
+    try {
+      await storyStore.approveOrRejectStory(currentStoryDetails.value.id, action);
+      closeViewDetailsModal();
+    } catch (error) {
+      console.error(`Lỗi khi ${action} truyện:`, error);
+      toast.error(`Có lỗi xảy ra khi ${action} truyện.`);
+    }
+  }
+};
+
+
+const handleDeleteStory = async (storyId: number) => {
+  if (confirm('Bạn có chắc chắn muốn XÓA truyện này vĩnh viễn không?')) {
+    try {
+      await storyStore.deleteStory(storyId);
+      if (storyStore.adminStories.length === 0 && filters.value.page > 1) {
+          filters.value.page--;
+      } else {
+          fetchStories();
+      }
+    } catch (error) {
+      console.error("Lỗi khi xóa truyện:", error);
+      toast.error("Có lỗi xảy ra khi xóa truyện.");
+    }
+  }
+};
+
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'duyet': return 'status-approved';
+    case 'cho_duyet': return 'status-pending';
+    case 'tu_choi': return 'status-rejected';
+    default: return '';
+  }
+};
+
+const formatStatus = (status: string) => {
+  switch (status) {
+    case 'duyet': return 'Đã duyệt';
+    case 'cho_duyet': return 'Chờ duyệt';
+    case 'tu_choi': return 'Từ chối';
+    default: return status;
+  }
+};
+
+const formatDate = (dateString: string) => {
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  };
+  return new Date(dateString).toLocaleDateString('vi-VN', options);
+};
+
+const handleModalImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement;
+  target.style.display = 'none'; 
+  const parentContainer = target.closest('.story-cover-display');
+  if (parentContainer && !parentContainer.querySelector('.no-image-placeholder-large')) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'no-image-placeholder-large';
+    placeholder.innerHTML = '<i class="fas fa-image"></i> <span>Không có ảnh bìa</span>';
+    parentContainer.appendChild(placeholder);
+  }
+};
+
+</script>
+
+
+<style scoped>
+.admin-story-management {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Manrope', sans-serif;
+  color: #ffffff;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  color: #22c55e;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 800;
+  text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+
+.story-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+  max-height: 70vh; 
+  overflow-y: auto; 
+}
+
+.story-cover-display {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.story-cover-display h3 {
+  color: #4ade80;
+  margin-bottom: 0.8rem;
+  font-size: 1.2rem;
+}
+
+.story-cover-large {
+  max-width: 200px;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  border: 2px solid #22c55e;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.no-image-placeholder-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 1rem;
+  text-align: center;
+  width: 200px;
+  height: 300px;
+  border: 2px dashed #4b5563;
+  border-radius: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+}
+
+.no-image-placeholder-large .fas {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.story-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  background: rgba(36, 40, 52, 0.5);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.info-item strong {
+  color: #22c55e;
+}
+
+.story-description, .admin-notes, .chapters-preview-section, .story-ratings {
+  background: rgba(36, 40, 52, 0.5);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.story-description h3, .admin-notes h3, .chapters-preview-section h3, .story-ratings h3 {
+  color: #4ade80;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.story-description p, .chapters-preview-section p {
+  white-space: pre-wrap; 
+  word-wrap: break-word; 
+  color: #d1d5db;
+  line-height: 1.6;
+}
+
+.admin-notes textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px solid #4b5563;
+  background-color: #2d313d;
+  color: #d1d5db;
+  font-family: 'Manrope', sans-serif;
+  resize: vertical;
+}
+
+.admin-notes textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+}
+
+.story-ratings input[type="number"] {
+  width: 100px; 
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #4b5563;
+  background-color: #2d313d;
+  color: #d1d5db;
+  font-family: 'Manrope', sans-serif;
+  margin-bottom: 10px;
+}
+
+.modal-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.action-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.approve-btn {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+  color: #ffffff;
+}
+
+.approve-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+}
+
+.reject-btn {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+  color: #ffffff;
+}
+
+.reject-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+}
+
+.cancel-btn {
+  background: #6b7280;
+  color: #ffffff;
+}
+
+.cancel-btn:hover {
+  background: #4b5563;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(75, 85, 99, 0.4);
+}
+
+.loading-modal-content {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.1rem;
+  color: #d1d5db;
+}
+
+.status-badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.status-approved {
+  background-color: #22c55e;
+}
+
+.status-pending {
+  background-color: #f59e0b;
+}
+
+.status-rejected {
+  background-color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  .admin-story-management {
+    padding: 1rem;
+  }
+  .page-title {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .modal-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.2rem;
+  }
+  .story-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .story-cover-large, .no-image-placeholder-large {
+    max-width: 150px;
+    max-height: 225px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-story-management {
+    padding: 0.5rem;
+  }
+  .page-title {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+  .story-details-content {
+    padding: 0.5rem;
+  }
+}
+</style>

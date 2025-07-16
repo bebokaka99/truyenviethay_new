@@ -7,6 +7,7 @@ import CategoryView from "@/views/CategoryView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import ProfileSettingsView from "@/views/ProfileSettingsView.vue";
 import AdminUserManagementView from "@/views/admin/AdminUserManagementView.vue";
+import AdminStoryManagementView from "@/views/admin/AdminStoryManagementView.vue"; // Import this
 import SubmitStoryView from "@/views/SubmitStoryView.vue"; 
 
 import { useAuthStore } from "@/modules/auth/auth.store";
@@ -51,6 +52,12 @@ const routes: Array<RouteRecordRaw> = [
         path: "/admin/quan-ly-nguoi-dung",
         name: "AdminManageUsers",
         component: AdminUserManagementView,
+        meta: { requiresAuth: true, requiredRole: ["admin"] },
+    },
+    {
+        path: "/admin/quan-ly-truyen", // New route for Admin Story Management
+        name: "AdminManageStories",
+        component: AdminStoryManagementView,
         meta: { requiresAuth: true, requiredRole: ["admin"] },
     },
     {

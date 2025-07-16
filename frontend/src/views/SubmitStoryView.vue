@@ -24,12 +24,48 @@
           />
 
           <div class="form-group">
+            <label for="linkNguon" class="form-label"><i class="fas fa-link icon"></i> Link nguồn (nếu có)</label>
+            <input 
+              type="url" 
+              id="linkNguon" 
+              v-model="story.link_nguon" 
+              class="form-input" 
+              placeholder="https://example.com/source-story"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="mucTieu" class="form-label"><i class="fas fa-bullseye icon"></i> Mục tiêu</label>
+            <textarea 
+              id="mucTieu" 
+              v-model="story.muc_tieu" 
+              rows="4" 
+              class="form-input" 
+              placeholder="Mục tiêu của truyện: ví dụ như giải trí, truyền tải thông điệp, giáo dục, v.v."
+            ></textarea>
+            <span v-if="submitted && (!story.muc_tieu || story.muc_tieu.trim() === '')" class="error-message-inline">Mục tiêu không được để trống.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="doiTuongDocGia" class="form-label"><i class="fas fa-users icon"></i> Đối tượng độc giả</label>
+            <textarea 
+              id="doiTuongDocGia" 
+              v-model="story.doi_tuong_doc_gia" 
+              rows="4" 
+              class="form-input" 
+              placeholder="Đối tượng độc giả hướng tới: ví dụ như giới trẻ, người lớn, fan thể loại cụ thể, v.v."
+            ></textarea>
+            <span v-if="submitted && (!story.doi_tuong_doc_gia || story.doi_tuong_doc_gia.trim() === '')" class="error-message-inline">Đối tượng độc giả không được để trống.</span>
+          </div>
+
+
+          <div class="form-group">
             <label class="form-label">Nội dung chương mẫu</label>
             <ChapterContentEditor 
               v-model="story.chuong_mau" 
               :api-key="tinymceApiKey" 
             />
-            <span v-if="submitted && (!story.chuong_mau || story.chuong_mau.trim() === '<p></p>')" class="error-message-inline">Nội dung chương mẫu không được để trống.</span>
+            <span v-if="submitted && (!story.chuong_mau || story.chuong_mau.trim() === '<p></p>' || story.chuong_mau.trim() === '')" class="error-message-inline">Nội dung chương mẫu không được để trống.</span>
           </div>
           
           <div class="form-group agree-group">
@@ -84,6 +120,9 @@ const story = ref({
   trang_thai: 'Đang ra', 
   tinh_trang: 'Đang viết', 
   trang_thai_viet: 'Bản nháp', 
+  link_nguon: '', // Khởi tạo trường mới
+  muc_tieu: '',    // Khởi tạo trường mới
+  doi_tuong_doc_gia: '', // Khởi tạo trường mới
   chuong_mau: '', 
   anh_bia: null, 
   user_id: authStore.user?.id,
@@ -94,7 +133,7 @@ const loading = ref(false);
 const errorMessage = ref('');
 const submitted = ref(false); 
 const fileErrors = ref({ anh_bia: '' });
-const agreeToSubmit = ref(false); // Biến mới cho checkbox xác nhận
+const agreeToSubmit = ref(false); 
 
 const fetchCategories = async () => {
   try {
@@ -112,30 +151,69 @@ const handleFileValidationError = ({ field, message }) => {
 
 const validateForm = () => {
   let isValid = true;
+  errorMessage.value = ''; 
   fileErrors.value.anh_bia = ''; 
 
-  if (!story.value.ten_truyen) isValid = false;
-  if (!story.value.tac_gia) isValid = false;
-  if (!story.value.mo_ta) isValid = false;
-  if (story.value.the_loai_ids.length === 0) isValid = false;
-  if (!story.value.trang_thai) isValid = false;
-  if (!story.value.tinh_trang) isValid = false;
-  if (!story.value.trang_thai_viet) isValid = false;
-  if (!story.value.chuong_mau || story.value.chuong_mau.trim() === '<p></p>') {
+  if (!story.value.ten_truyen || story.value.ten_truyen.trim() === '') {
     isValid = false;
+    errorMessage.value = 'Tên truyện không được để trống.';
+  }
+  if (!story.value.tac_gia || story.value.tac_gia.trim() === '') {
+    isValid = false;
+    errorMessage.value = 'Tên tác giả không được để trống.';
+  }
+  if (!story.value.mo_ta || story.value.mo_ta.trim() === '') {
+    isValid = false;
+    errorMessage.value = 'Mô tả không được để trống.';
+  }
+  if (!story.value.the_loai_ids || story.value.the_loai_ids.length === 0) {
+    isValid = false;
+    errorMessage.value = 'Vui lòng chọn ít nhất một thể loại.';
+  }
+  if (!story.value.trang_thai) {
+    isValid = false;
+    errorMessage.value = 'Trạng thái truyện không được để trống.';
+  }
+  if (!story.value.tinh_trang) {
+    isValid = false;
+    errorMessage.value = 'Tình trạng truyện không được để trống.';
+  }
+  if (!story.value.trang_thai_viet) {
+    isValid = false;
+    errorMessage.value = 'Trạng thái viết truyện không được để trống.';
+  }
+  // NEW: Validate Mục tiêu
+  if (!story.value.muc_tieu || story.value.muc_tieu.trim() === '') {
+    isValid = false;
+    errorMessage.value = 'Mục tiêu không được để trống.';
+  }
+  // NEW: Validate Đối tượng độc giả
+  if (!story.value.doi_tuong_doc_gia || story.value.doi_tuong_doc_gia.trim() === '') {
+    isValid = false;
+    errorMessage.value = 'Đối tượng độc giả không được để trống.';
+  }
+  if (!story.value.chuong_mau || story.value.chuong_mau.trim() === '<p></p>' || story.value.chuong_mau.trim() === '') {
+    isValid = false;
+    errorMessage.value = 'Nội dung chương mẫu không được để trống.';
   }
   if (!story.value.anh_bia) {
     isValid = false;
     fileErrors.value.anh_bia = 'Ảnh bìa là bắt buộc.';
+    errorMessage.value = 'Ảnh bìa là bắt buộc.'; 
   } else {
     if (fileErrors.value.anh_bia) {
       isValid = false; 
+      errorMessage.value = fileErrors.value.anh_bia; 
     }
   }
 
-  // Thêm kiểm tra cho checkbox xác nhận
   if (!agreeToSubmit.value) {
     isValid = false;
+    errorMessage.value = 'Bạn phải đồng ý xác nhận để đăng truyện.';
+  }
+
+  if (!isValid && errorMessage.value) {
+    toast.error(errorMessage.value);
   }
 
   return isValid;
@@ -145,12 +223,11 @@ const handleSubmit = async () => {
   submitted.value = true; 
   
   if (!validateForm()) {
-    toast.error('Vui lòng điền đầy đủ và chính xác các thông tin bắt buộc!');
-    return;
+    return; 
   }
 
   loading.value = true;
-  errorMessage.value = '';
+  errorMessage.value = ''; 
 
   const formData = new FormData();
   formData.append('ten_truyen', story.value.ten_truyen);
@@ -159,6 +236,9 @@ const handleSubmit = async () => {
   formData.append('trang_thai', story.value.trang_thai);
   formData.append('tinh_trang', story.value.tinh_trang);
   formData.append('trang_thai_viet', story.value.trang_thai_viet);
+  formData.append('link_nguon', story.value.link_nguon); // NEW
+  formData.append('muc_tieu', story.value.muc_tieu);     // NEW
+  formData.append('doi_tuong_doc_gia', story.value.doi_tuong_doc_gia); // NEW
   formData.append('chuong_mau', story.value.chuong_mau);
   formData.append('user_id', story.value.user_id);
   
@@ -199,7 +279,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Import font và icon từ ProfileSettingsView */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Sora:wght@400;600&display=swap");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css");
 
@@ -220,10 +299,10 @@ onMounted(() => {
 .submit-story-card {
   background: rgba(26, 29, 41, 0.9);
   backdrop-filter: blur(15px);
-  border: 2px solid #4caf50; /* Màu viền xanh lá */
+  border: 2px solid #4caf50; 
   border-radius: 1rem;
   padding: 2.5rem;
-  box-shadow: 0 0 25px rgba(76, 175, 80, 0.25); /* Box shadow xanh lá */
+  box-shadow: 0 0 25px rgba(76, 175, 80, 0.25); 
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   animation: fade-in 0.8s ease-in;
 }
@@ -237,7 +316,7 @@ onMounted(() => {
   font-family: "Sora", sans-serif;
   font-size: 2.25rem;
   font-weight: 700;
-  color: #4caf50; /* Màu chữ xanh lá */
+  color: #4caf50; 
   margin-bottom: 2rem;
   text-align: center;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
@@ -262,12 +341,10 @@ onMounted(() => {
   color: #cccccc;
 }
 
-/* Các styles input chung (cho StoryBasicInfoForm) */
-/* Cần đảm bảo các component con không có style cục bộ nào ghi đè */
 .form-input {
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(76, 175, 80, 0.3); /* Viền màu xanh lá nhạt */
+  border: 1px solid rgba(76, 175, 80, 0.3); 
   border-radius: 0.5rem;
   color: #ffffff;
   font-family: "Manrope", sans-serif;
@@ -277,7 +354,7 @@ onMounted(() => {
 }
 
 .form-input:focus {
-  border-color: #4caf50; /* Viền màu xanh lá khi focus */
+  border-color: #4caf50; 
   box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
 }
 
@@ -285,7 +362,6 @@ onMounted(() => {
   border-color: #ef4444; 
 }
 
-/* Styles cho checkbox xác nhận */
 .agree-group {
   display: flex;
   flex-direction: column;
@@ -304,16 +380,15 @@ onMounted(() => {
 .agree-label input {
   width: 1.2rem;
   height: 1.2rem;
-  accent-color: #4caf50; /* Màu xanh lá cho checkbox */
+  accent-color: #4caf50; 
 }
 .agree-label input.is-invalid {
-  outline: 2px solid #ef4444; /* Viền đỏ cho checkbox lỗi */
+  outline: 2px solid #ef4444; 
 }
 
-/* Styles cho nút submit */
 .submit-btn {
   padding: 0.75rem 2rem;
-  background: linear-gradient(90deg, #4caf50, #66bb6a); /* Gradient xanh lá */
+  background: linear-gradient(90deg, #4caf50, #66bb6a); 
   color: #ffffff; 
   font-family: "Sora", sans-serif;
   font-size: 1rem;
@@ -360,7 +435,6 @@ onMounted(() => {
   color: #cccccc;
 }
 
-/* Error messages */
 .error-message {
   color: #ff6b6b;
   margin-top: 1rem;
@@ -374,7 +448,6 @@ onMounted(() => {
   margin-left: 5px;
 }
 
-/* Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -386,7 +459,6 @@ onMounted(() => {
   }
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .submit-story-container {
     padding: 1.5rem 1rem;
@@ -424,16 +496,18 @@ onMounted(() => {
   }
 
   .form-label {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
   }
 
   .form-input {
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
+    border-radius: 0.75rem;
   }
 
   .error-message-inline {
     font-size: 0.8rem;
+    margin-top: 0.1rem;
   }
 
   .submit-btn {

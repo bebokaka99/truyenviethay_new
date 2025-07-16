@@ -1,7 +1,6 @@
 const db = require("../config/db");
 
 const StoryModel = {
-  // Tạo truyện mới
   create: async (storyData) => {
     const [result] = await db.query(
       `INSERT INTO truyen_new (
@@ -34,19 +33,99 @@ const StoryModel = {
     );
     return result.insertId;
   },
-  // Lấy tất cả truyện (Admin)
-  getAll: async () => {
-    const [rows] = await db.query(`SELECT * FROM truyen_new`);
-    return rows;
+
+  getAll: async ({
+    page = 1,
+    limit = 10,
+    trang_thai_kiem_duyet = "",
+    keyword = "",
+    author_id = null,
+    category_id = null,
+  }) => {
+    const offset = (page - 1) * limit;
+    let query = `
+        SELECT tn.*, u.username AS ten_tac_gia
+        FROM truyen_new tn
+        LEFT JOIN users_new u ON tn.user_id = u.id
+    `;
+    let countQuery = `
+        SELECT COUNT(*) AS total
+        FROM truyen_new tn
+        LEFT JOIN users_new u ON tn.user_id = u.id
+    `;
+    const params = [];
+    const countParams = [];
+    const whereClauses = [];
+
+    if (trang_thai_kiem_duyet) {
+      whereClauses.push(`tn.trang_thai_kiem_duyet = ?`);
+      params.push(trang_thai_kiem_duyet);
+      countParams.push(trang_thai_kiem_duyet);
+    }
+
+    if (keyword) {
+      whereClauses.push(`(tn.ten_truyen LIKE ? OR tn.tac_gia LIKE ?)`);
+      params.push(`%${keyword}%`, `%${keyword}%`);
+      countParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (author_id) {
+      whereClauses.push(`tn.user_id = ?`);
+      params.push(author_id);
+      countParams.push(author_id);
+    }
+
+    if (category_id) {
+      query = `
+            SELECT tn.*, u.username AS ten_tac_gia
+            FROM truyen_new tn
+            LEFT JOIN users_new u ON tn.user_id = u.id
+            INNER JOIN truyen_theloai tt ON tn.id = tt.truyen_id
+        `;
+      countQuery = `
+            SELECT COUNT(DISTINCT tn.id) AS total
+            FROM truyen_new tn
+            LEFT JOIN users_new u ON tn.user_id = u.id
+            INNER JOIN truyen_theloai tt ON tn.id = tt.truyen_id
+        `;
+      whereClauses.push(`tt.theloai_id = ?`);
+      params.push(category_id);
+      countParams.push(category_id);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ` + whereClauses.join(" AND ");
+      countQuery += ` WHERE ` + whereClauses.join(" AND ");
+    }
+
+    query += ` ORDER BY tn.thoi_gian_cap_nhat DESC LIMIT ? OFFSET ?`;
+    params.push(+limit, +offset);
+
+    const [stories] = await db.query(query, params);
+    const [countResult] = await db.query(countQuery, countParams);
+
+    return {
+      data: stories,
+      pagination: {
+        total: countResult[0].total,
+        current_page: +page,
+        total_pages: Math.ceil(countResult[0].total / limit),
+      },
+    };
   },
-  // Lấy truyện theo userId (Admin)
+  
   getById: async (id) => {
-    const [rows] = await db.query(`SELECT * FROM truyen_new WHERE id = ?`, [
-      id,
-    ]);
-    return rows[0];
+    // Lấy tất cả các cột từ truyen_new và noi_dung_chuong_mau từ bảng chuong
+    const [rows] = await db.query(
+      `SELECT tn.*, c.noi_dung_chuong_mau AS sample_chapter_content
+       FROM truyen_new tn
+       LEFT JOIN chuong c ON tn.id = c.truyen_id AND c.is_chuong_mau = 1
+       WHERE tn.id = ?`,
+      [id]
+    );
+    return rows[0]; 
   },
-  // Lấy truyện theo slug (dùng cho frontend)
+
   getBySlug: async (slug) => {
     const [rows] = await db.query(`SELECT * FROM truyen_new WHERE slug = ?`, [
       slug,
@@ -83,7 +162,6 @@ const StoryModel = {
     );
     return result.affectedRows;
   },
-  // Lấy truyện theo trạng thái cho duyệt (Admin)
   getPendingApproval: async () => {
     const [rows] = await db.query(
       `SELECT * FROM truyen_new WHERE trang_thai_kiem_duyet = 'cho_duyet'`
@@ -101,14 +179,12 @@ const StoryModel = {
     );
     return rows;
   },
-  // Xóa truyện
   delete: async (id) => {
     const [result] = await db.query(`DELETE FROM truyen_new WHERE id = ?`, [
       id,
     ]);
     return result.affectedRows;
   },
-  // Thêm thể loại cho truyện
   addGenresForStory: async (truyenId, theloaiIds) => {
     const values = theloaiIds.map((id) => [truyenId, id]);
     await db.query(
@@ -136,10 +212,10 @@ const StoryModel = {
 
     const [data] = await db.query(
       `SELECT id, ten_truyen, tac_gia, slug, mo_ta, anh_bia, luot_xem, thoi_gian_cap_nhat
-     FROM truyen_new
-     ${whereClause}
-     ORDER BY ${sortField} ${sortOrder}
-     LIMIT ? OFFSET ?`,
+       FROM truyen_new
+       ${whereClause}
+       ORDER BY ${sortField} ${sortOrder}
+       LIMIT ? OFFSET ?`,
       [`%${keyword}%`, +limit, +offset]
     );
 
