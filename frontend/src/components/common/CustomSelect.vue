@@ -3,14 +3,27 @@
     <div
       class="select-selected"
       :class="{ open: isOpen, 'is-invalid': isInvalid }"
-      @click="isOpen = !isOpen"
+      @click="toggleDropdown"
     >
-      {{ selectedLabel }}
-      <i class="fas fa-chevron-down select-arrow"></i>
+      <input
+        v-if="searchable"
+        type="text"
+        v-model="searchTerm"
+        :placeholder="isOpen ? 'Tìm kiếm...' : selectedLabel"
+        class="select-search-input"
+        @focus="openDropdown"
+        @input="filterOptions"
+        @keydown.stop
+      />
+      <span v-else>{{ selectedLabel }}</span>
+      <i class="fas fa-chevron-down select-arrow" :class="{ 'rotate': isOpen }"></i>
     </div>
     <div class="select-items" v-show="isOpen">
+      <div v-if="filteredOptions.length === 0" class="no-results">
+        Không tìm thấy kết quả nào.
+      </div>
       <div
-        v-for="option in options"
+        v-for="option in filteredOptions"
         :key="option.value"
         @click="selectOption(option)"
         class="select-item"
@@ -23,10 +36,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 
 interface SelectOption {
-  value: string | number;
+  value: string | number | null;
   label: string;
 }
 
@@ -36,9 +49,9 @@ const props = defineProps({
     required: true,
   },
   modelValue: {
-    type: [String, Number],
+    type: [String, Number, null] as PropType<string | number | null>,
     required: false,
-    default: '',
+    default: null,
   },
   placeholder: {
     type: String,
@@ -48,21 +61,55 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  searchable: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
 const isOpen = ref(false);
 const selectRef = ref<HTMLElement | null>(null);
+const searchTerm = ref('');
+const filteredOptions = ref<SelectOption[]>(props.options);
 
 const selectedLabel = computed(() => {
   const selected = props.options.find(opt => opt.value === props.modelValue);
   return selected ? selected.label : props.placeholder;
 });
 
+const toggleDropdown = () => {
+  isOpen.value = !isOpen.value;
+  if (isOpen.value && props.searchable) {
+    searchTerm.value = ''; 
+    filterOptions();
+  }
+};
+
+const openDropdown = () => {
+  isOpen.value = true;
+  if (props.searchable) {
+    searchTerm.value = '';
+    filterOptions();
+  }
+};
+
 const selectOption = (option: SelectOption) => {
   emit('update:modelValue', option.value);
   isOpen.value = false;
+  searchTerm.value = option.label; 
+};
+
+const filterOptions = () => {
+  if (!props.searchable || !searchTerm.value) {
+    filteredOptions.value = props.options;
+  } else {
+    const lowerCaseSearchTerm = searchTerm.value.toLowerCase();
+    filteredOptions.value = props.options.filter(option =>
+      option.label.toLowerCase().includes(lowerCaseSearchTerm)
+    );
+  }
 };
 
 const closeOnOutsideClick = (e: MouseEvent) => {
@@ -70,6 +117,10 @@ const closeOnOutsideClick = (e: MouseEvent) => {
     isOpen.value = false;
   }
 };
+
+watch(() => props.options, (newOptions) => {
+  filteredOptions.value = newOptions;
+}, { deep: true });
 
 onMounted(() => {
   document.addEventListener('click', closeOnOutsideClick);
@@ -84,7 +135,7 @@ onBeforeUnmount(() => {
 .custom-select {
   position: relative;
   width: 100%;
-  font-family: 'Manrope', sans-serif; /* Font đồng bộ */
+  font-family: 'Manrope', sans-serif;
   color: #ffffff;
 }
 
@@ -97,7 +148,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   transition: all 0.3s ease;
-  font-size: 1rem; /* Font size đồng bộ */
+  font-size: 1rem;
+  background-color: rgba(36, 40, 52, 0.7); /* Màu nền khớp với filter section */
 }
 
 .select-selected.open,
@@ -115,10 +167,26 @@ onBeforeUnmount(() => {
 .select-arrow {
   transition: transform 0.3s ease;
   color: #4caf50;
+  margin-left: 0.5rem; /* Khoảng cách với text/input */
 }
 
-.select-selected.open .select-arrow {
+.select-arrow.rotate {
   transform: rotate(180deg);
+}
+
+.select-search-input {
+  flex-grow: 1;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1rem;
+  padding: 0;
+  margin: 0;
+  outline: none;
+}
+
+.select-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .select-items {
@@ -132,6 +200,25 @@ onBeforeUnmount(() => {
   border: 1px solid #4caf50; 
   overflow: hidden;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  max-height: 250px; /* Giới hạn chiều cao */
+  overflow-y: auto; /* Thêm thanh cuộn dọc */
+  scrollbar-width: thin; 
+  scrollbar-color: #4ade80 #2d313d; 
+}
+
+.select-items::-webkit-scrollbar {
+  width: 8px;
+}
+
+.select-items::-webkit-scrollbar-track {
+  background: #2d313d;
+  border-radius: 10px;
+}
+
+.select-items::-webkit-scrollbar-thumb {
+  background-color: #4ade80;
+  border-radius: 10px;
+  border: 2px solid #2d313d;
 }
 
 .select-item {
@@ -145,5 +232,12 @@ onBeforeUnmount(() => {
 .select-item:hover, .select-item.same-as-selected {
   background-color: #4caf50; 
   color: #1a1d29; 
+}
+
+.no-results {
+  padding: 0.75rem 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  font-style: italic;
 }
 </style>

@@ -2,49 +2,60 @@
   <div class="story-filters-section">
     <div class="filter-group">
       <label for="statusFilter" class="filter-label"><i class="fas fa-filter icon"></i> Trạng thái duyệt:</label>
-      <select id="statusFilter" v-model="internalFilters.trang_thai_kiem_duyet" class="filter-select">
-        <option value="">Tất cả</option>
-        <option value="cho_duyet">Chờ duyệt</option>
-        <option value="duyet">Đã duyệt</option>
-        <option value="tu_choi">Từ chối</option>
-      </select>
+      <CustomSelect
+        id="statusFilter"
+        :options="statusOptions"
+        v-model="internalFilters.trang_thai_kiem_duyet"
+        placeholder="Tất cả trạng thái"
+      />
     </div>
 
     <div class="filter-group">
       <label for="categoryFilter" class="filter-label"><i class="fas fa-tags icon"></i> Thể loại:</label>
-      <select id="categoryFilter" v-model="internalFilters.category_id" class="filter-select">
-        <option value="">Tất cả</option>
-        <option v-for="category in categories" :key="category.id_theloai" :value="category.id_theloai">
-          {{ category.ten_theloai }}
-        </option>
-      </select>
+      <CustomSelect
+        id="categoryFilter"
+        :options="formattedCategories"
+        v-model="internalFilters.category_id"
+        placeholder="Tất cả thể loại"
+      />
     </div>
 
     <div class="filter-group search-group">
       <label for="keywordSearch" class="filter-label"><i class="fas fa-search icon"></i> Tìm kiếm:</label>
-      <input
-        type="text"
-        id="keywordSearch"
-        v-model="internalFilters.keyword"
-        placeholder="Tên truyện hoặc tác giả"
-        class="filter-input"
-        @keyup.enter="applyFilters"
-      />
+      <div class="search-input-wrapper">
+        <input
+          type="text"
+          id="keywordSearch"
+          v-model="internalFilters.keyword"
+          placeholder="Tên truyện hoặc tác giả"
+          class="filter-input"
+          @keyup.enter="applyFilters"
+        />
+        <button
+          v-if="internalFilters.keyword"
+          @click="clearKeyword"
+          class="clear-search-btn"
+          title="Xóa tìm kiếm"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
     </div>
 
     <div class="filter-actions">
       <button @click="applyFilters" class="apply-btn">
         <i class="fas fa-check-circle"></i> Áp dụng
       </button>
-      <button @click="clearFilters" class="clear-btn">
-        <i class="fas fa-times-circle"></i> Xóa bộ lọc
+      <button @click="clearAllFilters" class="clear-btn" title="Xóa tất cả bộ lọc">
+        <i class="fas fa-trash-alt"></i>
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, PropType } from 'vue';
+import { ref, watch, PropType, computed } from 'vue';
+import CustomSelect from '@/components/common/CustomSelect.vue';
 
 interface Filters {
   trang_thai_kiem_duyet: string;
@@ -79,6 +90,20 @@ const emit = defineEmits(['applyFilters', 'clearFilters']);
 
 const internalFilters = ref<Filters>({ ...props.initialFilters });
 
+const statusOptions = ref([
+  { value: '', label: 'Tất cả' },
+  { value: 'cho_duyet', label: 'Chờ duyệt' },
+  { value: 'duyet', label: 'Đã duyệt' },
+  { value: 'tu_choi', label: 'Từ chối' },
+]);
+
+const formattedCategories = computed(() => {
+  return [{ value: null, label: 'Tất cả' }, ...props.categories.map(cat => ({
+    value: cat.id_theloai,
+    label: cat.ten_theloai,
+  }))];
+});
+
 watch(() => props.initialFilters, (newFilters) => {
   internalFilters.value = { ...newFilters };
 }, { deep: true });
@@ -87,7 +112,12 @@ const applyFilters = () => {
   emit('applyFilters', internalFilters.value);
 };
 
-const clearFilters = () => {
+const clearKeyword = () => {
+  internalFilters.value.keyword = '';
+  applyFilters();
+};
+
+const clearAllFilters = () => {
   internalFilters.value = {
     trang_thai_kiem_duyet: '',
     keyword: '',
@@ -135,7 +165,11 @@ const clearFilters = () => {
   color: #22c55e;
 }
 
-.filter-select,
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .filter-input {
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
@@ -145,9 +179,10 @@ const clearFilters = () => {
   font-size: 0.95rem;
   transition: all 0.3s ease;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+  width: 100%; 
+  padding-right: 2.5rem; 
 }
 
-.filter-select:focus,
 .filter-input:focus {
   border-color: #22c55e;
   background: rgba(255, 255, 255, 0.12);
@@ -155,8 +190,20 @@ const clearFilters = () => {
   outline: none;
 }
 
-.filter-select option {
-  background-color: #242834; 
+.clear-search-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.2s ease;
+}
+
+.clear-search-btn:hover {
   color: #ffffff;
 }
 
@@ -195,6 +242,9 @@ const clearFilters = () => {
 .clear-btn {
   background: #6b7280;
   color: #ffffff;
+  width: 45px;
+  height: 45px;
+  justify-content: center;
 }
 
 .clear-btn:hover {
@@ -215,12 +265,26 @@ const clearFilters = () => {
     width: 100%;
   }
   .filter-actions {
-    flex-direction: column;
+    flex-direction: row; 
+    justify-content: space-between; 
     gap: 0.75rem;
+  }
+  .apply-btn {
+    flex-grow: 1; 
+    justify-content: center;
+  }
+  .clear-btn {
+    width: auto; 
+    flex-shrink: 0; 
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-actions {
+    flex-direction: column; 
   }
   .apply-btn, .clear-btn {
     width: 100%;
-    justify-content: center;
   }
 }
 </style>

@@ -1,99 +1,105 @@
 <template>
-  <div class="admin-story-management">
-    <h1 class="page-title">Quản lý Truyện</h1>
+  <div class="admin-story-management-page">
+    <AppHeader />
 
-    <StoryFiltersSection
-      :categories="categories"
-      :initial-filters="filters"
-      @apply-filters="handleApplyFilters"
-      @clear-filters="handleClearFilters"
-    />
+    <main class="admin-story-management-container">
+      <h1 class="page-title">Quản lý Truyện</h1>
 
-    <StoryTableSection
-      :stories="storyStore.adminStories"
-      :loading="storyStore.adminStoriesLoading"
-      @approve="handleApproveStory"
-      @reject="handleRejectStory"
-      @view-details="handleViewDetails"
-      @delete="handleDeleteStory"
-    />
+      <StoryFiltersSection
+        :categories="categories"
+        :initial-filters="filters"
+        @apply-filters="handleApplyFilters"
+        @clear-filters="handleClearFilters"
+      />
 
-    <PaginationSection
-      v-if="storyStore.adminStoriesPagination.total_pages > 1"
-      :current-page="storyStore.adminStoriesPagination.current_page"
-      :total-pages="storyStore.adminStoriesPagination.total_pages"
-      @goToPage="handleGoToPage"
-    />
+      <StoryTableSection
+        :stories="storyStore.adminStories"
+        :loading="storyStore.adminStoriesLoading"
+        @approve="handleApproveStory"
+        @reject="handleRejectStory"
+        @view-details="handleViewDetails"
+        @delete="handleDeleteStory"
+      />
 
-    <BaseModal :is-open="isViewDetailsModalOpen" @close="closeViewDetailsModal" title="Chi tiết Truyện và Duyệt">
-      <div v-if="currentStoryDetails">
-        <div class="story-details-content">
-          <div class="story-cover-display">
-            <h3>Ảnh bìa truyện:</h3>
-            <img
-              v-if="currentStoryDetails.anh_bia_url"
-              :src="currentStoryDetails.anh_bia_url"
-              alt="Ảnh bìa"
-              class="story-cover-large"
-              crossorigin="anonymous"
-              @error="handleModalImageError"
-            />
-            <div v-else class="no-image-placeholder-large">
-              <i class="fas fa-image"></i>
-              <span>Không có ảnh bìa</span>
+      <PaginationSection
+        v-if="storyStore.adminStoriesPagination.total_pages > 1"
+        :current-page="storyStore.adminStoriesPagination.current_page"
+        :total-pages="storyStore.adminStoriesPagination.total_pages"
+        @goToPage="handleGoToPage"
+      />
+
+      <BaseModal :is-open="isViewDetailsModalOpen" @close="closeViewDetailsModal" title="Chi tiết Truyện và Duyệt">
+        <div v-if="currentStoryDetails">
+          <div class="story-details-content">
+            <div class="story-cover-display">
+              <h3>Ảnh bìa truyện:</h3>
+              <img
+                v-if="currentStoryDetails.anh_bia_url"
+                :src="currentStoryDetails.anh_bia_url"
+                alt="Ảnh bìa"
+                class="story-cover-large"
+                crossorigin="anonymous"
+                @error="handleModalImageError"
+              />
+              <div v-else class="no-image-placeholder-large">
+                <i class="fas fa-image"></i>
+                <span>Không có ảnh bìa</span>
+              </div>
+            </div>
+
+            <div class="story-info-grid">
+              <div class="info-item"><strong>ID:</strong> <span>{{ currentStoryDetails.id }}</span></div>
+              <div class="info-item"><strong>Tên truyện:</strong> <span>{{ currentStoryDetails.ten_truyen }}</span></div>
+              <div class="info-item"><strong>Tác giả:</strong> <span>{{ currentStoryDetails.tac_gia }}</span></div>
+              <div class="info-item"><strong>Slug:</strong> <span>{{ currentStoryDetails.slug }}</span></div>
+              <div class="info-item"><strong>Trạng thái:</strong> <span>{{ currentStoryDetails.trang_thai }}</span></div>
+              <div class="info-item"><strong>Tình trạng:</strong> <span>{{ currentStoryDetails.tinh_trang }}</span></div>
+              <div class="info-item"><strong>Trạng thái viết:</strong> <span>{{ currentStoryDetails.trang_thai_viet }}</span></div>
+              <div class="info-item"><strong>Yếu tố nhạy cảm:</strong> <span>{{ currentStoryDetails.yeu_to_nhay_cam ? 'Có' : 'Không' }}</span></div>
+              <div class="info-item"><strong>Link nguồn:</strong> <a :href="currentStoryDetails.link_nguon" target="_blank">{{ currentStoryDetails.link_nguon || 'N/A' }}</a></div>
+              <div class="info-item"><strong>Mục tiêu:</strong> <span>{{ currentStoryDetails.muc_tieu }}</span></div>
+              <div class="info-item"><strong>Đối tượng độc giả:</strong> <span>{{ currentStoryDetails.doi_tuong_doc_gia }}</span></div>
+              <div class="info-item"><strong>Thời gian cập nhật:</strong> <span>{{ formatDate(currentStoryDetails.thoi_gian_cap_nhat) }}</span></div>
+              <div class="info-item"><strong>Trạng thái kiểm duyệt:</strong> <span :class="['status-badge', getStatusClass(currentStoryDetails.trang_thai_kiem_duyet)]">{{ formatStatus(currentStoryDetails.trang_thai_kiem_duyet) }}</span></div>
+            </div>
+
+            <div class="story-description">
+              <h3>Mô tả:</h3>
+              <p>{{ currentStoryDetails.mo_ta }}</p>
+            </div>
+
+            <div class="admin-notes">
+              <h3>Ghi chú Admin:</h3>
+              <textarea v-model="currentStoryDetails.ghi_chu_admin" rows="3" placeholder="Thêm ghi chú của admin..."></textarea>
+            </div>
+
+            <div class="story-ratings">
+              <h3>Đánh giá nội dung:</h3>
+              <input type="number" v-model.number="currentStoryDetails.danh_gia_noi_dung" min="0" max="10" class="rating-input" />
+              <h3>Đánh giá văn phong:</h3>
+              <input type="number" v-model.number="currentStoryDetails.danh_gia_van_phong" min="0" max="10" class="rating-input" />
+              <h3>Đánh giá sáng tạo:</h3>
+              <input type="number" v-model.number="currentStoryDetails.danh_gia_sang_tao" min="0" max="10" class="rating-input" />
+            </div>
+
+            <div class="chapters-preview-section">
+              <h3>Chương mẫu / Chương đầu tiên:</h3>
+              <div v-if="currentStoryDetails.sample_chapter_content" v-html="currentStoryDetails.sample_chapter_content" class="chapter-content-preview"></div>
+              <p v-else class="no-content-message">Không có chương mẫu hoặc nội dung chương đầu tiên được cung cấp.</p>
             </div>
           </div>
 
-          <div class="story-info-grid">
-            <div class="info-item"><strong>ID:</strong> {{ currentStoryDetails.id }}</div>
-            <div class="info-item"><strong>Tên truyện:</strong> {{ currentStoryDetails.ten_truyen }}</div>
-            <div class="info-item"><strong>Tác giả:</strong> {{ currentStoryDetails.tac_gia }}</div>
-            <div class="info-item"><strong>Slug:</strong> {{ currentStoryDetails.slug }}</div>
-            <div class="info-item"><strong>Trạng thái:</strong> {{ currentStoryDetails.trang_thai }}</div>
-            <div class="info-item"><strong>Tình trạng:</strong> {{ currentStoryDetails.tinh_trang }}</div>
-            <div class="info-item"><strong>Trạng thái viết:</strong> {{ currentStoryDetails.trang_thai_viet }}</div>
-            <div class="info-item"><strong>Yếu tố nhạy cảm:</strong> {{ currentStoryDetails.yeu_to_nhay_cam ? 'Có' : 'Không' }}</div>
-            <div class="info-item"><strong>Link nguồn:</strong> <a :href="currentStoryDetails.link_nguon" target="_blank">{{ currentStoryDetails.link_nguon || 'N/A' }}</a></div>
-            <div class="info-item"><strong>Mục tiêu:</strong> {{ currentStoryDetails.muc_tieu }}</div>
-            <div class="info-item"><strong>Đối tượng độc giả:</strong> {{ currentStoryDetails.doi_tuong_doc_gia }}</div>
-            <div class="info-item"><strong>Thời gian cập nhật:</strong> {{ formatDate(currentStoryDetails.thoi_gian_cap_nhat) }}</div>
-            <div class="info-item"><strong>Trạng thái kiểm duyệt:</strong> <span :class="['status-badge', getStatusClass(currentStoryDetails.trang_thai_kiem_duyet)]">{{ formatStatus(currentStoryDetails.trang_thai_kiem_duyet) }}</span></div>
-          </div>
-
-          <div class="story-description">
-            <h3>Mô tả:</h3>
-            <p>{{ currentStoryDetails.mo_ta }}</p>
-          </div>
-
-          <div class="admin-notes">
-            <h3>Ghi chú Admin:</h3>
-            <textarea v-model="currentStoryDetails.ghi_chu_admin" rows="3" placeholder="Thêm ghi chú của admin..."></textarea>
-          </div>
-
-          <div class="story-ratings">
-            <h3>Đánh giá nội dung:</h3>
-            <input type="number" v-model.number="currentStoryDetails.danh_gia_noi_dung" min="0" max="10" />
-            <h3>Đánh giá văn phong:</h3>
-            <input type="number" v-model.number="currentStoryDetails.danh_gia_van_phong" min="0" max="10" />
-            <h3>Đánh giá sáng tạo:</h3>
-            <input type="number" v-model.number="currentStoryDetails.danh_gia_sang_tao" min="0" max="10" />
-          </div>
-
-          <div class="chapters-preview-section">
-            <h3>Chương mẫu / Chương đầu tiên:</h3>
-            <p v-if="currentStoryDetails.sample_chapter_content" v-html="currentStoryDetails.sample_chapter_content"></p>
-            <p v-else>Không có chương mẫu hoặc nội dung chương đầu tiên được cung cấp.</p>
+          <div class="modal-actions">
+            <button @click="submitApproval('duyet')" class="action-btn approve-btn">Duyệt truyện</button>
+            <button @click="submitApproval('tu_choi')" class="action-btn reject-btn">Từ chối truyện</button>
+            <button @click="closeViewDetailsModal" class="action-btn cancel-btn">Đóng</button>
           </div>
         </div>
+        <div v-else class="loading-modal-content">Đang tải thông tin truyện...</div>
+      </BaseModal>
+    </main>
 
-        <div class="modal-actions">
-          <button @click="submitApproval('duyet')" class="action-btn approve-btn">Duyệt truyện</button>
-          <button @click="submitApproval('tu_choi')" class="action-btn reject-btn">Từ chối truyện</button>
-          <button @click="closeViewDetailsModal" class="action-btn cancel-btn">Đóng</button>
-        </div>
-      </div>
-      <div v-else class="loading-modal-content">Đang tải thông tin truyện...</div>
-    </BaseModal>
+    <AppFooter />
   </div>
 </template>
 
@@ -101,15 +107,17 @@
 import { ref, onMounted, watch } from 'vue';
 import StoryFiltersSection from '@/components/admin/StoryFiltersSection.vue';
 import StoryTableSection from '@/components/admin/StoryTableSection.vue';
-import PaginationSection from '@/components/admin/PaginationSection.vue'; // Giả định component này đã tồn tại
+import PaginationSection from '@/components/admin/PaginationSection.vue'; 
 import BaseModal from '@/components/common/BaseModal.vue';
+import AppHeader from "@/components/layout/AppHeader.vue"; // Import AppHeader
+import AppFooter from "@/components/layout/AppFooter.vue"; // Import AppFooter
 import { useStoryTextStore } from '@/modules/storyText/storyText.store';
 import { useCategoryStore } from '@/modules/category/category.store';
-import { useToast } from 'vue-toastification'; // Import useToast
+import { useToast } from 'vue-toastification'; 
 
 const storyStore = useStoryTextStore();
 const categoryStore = useCategoryStore();
-const toast = useToast(); // Khởi tạo toast
+const toast = useToast(); 
 
 const filters = ref({
   page: 1,
@@ -161,6 +169,8 @@ const handleApproveStory = async (storyId: number) => {
   if (confirm('Bạn có chắc chắn muốn DUYỆT truyện này không?')) {
     try {
       await storyStore.approveOrRejectStory(storyId, 'duyet');
+      toast.success("Duyệt truyện thành công!");
+      fetchStories(); 
     } catch (error) {
       console.error("Lỗi khi duyệt truyện:", error);
       toast.error("Có lỗi xảy ra khi duyệt truyện.");
@@ -172,6 +182,8 @@ const handleRejectStory = async (storyId: number) => {
   if (confirm('Bạn có chắc chắn muốn TỪ CHỐI truyện này không?')) {
     try {
       await storyStore.approveOrRejectStory(storyId, 'tu_choi');
+      toast.success("Từ chối truyện thành công!");
+      fetchStories(); 
     } catch (error) {
       console.error("Lỗi khi từ chối truyện:", error);
       toast.error("Có lỗi xảy ra khi từ chối truyện.");
@@ -220,7 +232,9 @@ const submitApproval = async (action: 'duyet' | 'tu_choi') => {
   if (confirm(confirmMessage)) {
     try {
       await storyStore.approveOrRejectStory(currentStoryDetails.value.id, action);
+      toast.success(`Truyện đã được ${action === 'duyet' ? 'duyệt' : 'từ chối'} thành công!`);
       closeViewDetailsModal();
+      fetchStories(); 
     } catch (error) {
       console.error(`Lỗi khi ${action} truyện:`, error);
       toast.error(`Có lỗi xảy ra khi ${action} truyện.`);
@@ -228,11 +242,11 @@ const submitApproval = async (action: 'duyet' | 'tu_choi') => {
   }
 };
 
-
 const handleDeleteStory = async (storyId: number) => {
   if (confirm('Bạn có chắc chắn muốn XÓA truyện này vĩnh viễn không?')) {
     try {
       await storyStore.deleteStory(storyId);
+      toast.success("Xóa truyện thành công!");
       if (storyStore.adminStories.length === 0 && filters.value.page > 1) {
           filters.value.page--;
       } else {
@@ -285,17 +299,22 @@ const handleModalImageError = (event: Event) => {
     parentContainer.appendChild(placeholder);
   }
 };
-
 </script>
 
-
 <style scoped>
-.admin-story-management {
-  padding: 2rem;
+.admin-story-management-page {
+  min-height: 100vh;
+  background: #1a1d29;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Manrope', sans-serif;
+}
+
+.admin-story-management-container {
   max-width: 1200px;
   margin: 0 auto;
-  font-family: 'Manrope', sans-serif;
-  color: #ffffff;
+  padding: 2rem;
 }
 
 .page-title {
@@ -314,6 +333,23 @@ const handleModalImageError = (event: Event) => {
   padding: 1rem;
   max-height: 70vh; 
   overflow-y: auto; 
+  scrollbar-width: thin; 
+  scrollbar-color: #4ade80 #2d313d; 
+}
+
+.story-details-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.story-details-content::-webkit-scrollbar-track {
+  background: #2d313d;
+  border-radius: 10px;
+}
+
+.story-details-content::-webkit-scrollbar-thumb {
+  background-color: #4ade80;
+  border-radius: 10px;
+  border: 2px solid #2d313d;
 }
 
 .story-cover-display {
@@ -359,16 +395,42 @@ const handleModalImageError = (event: Event) => {
 
 .story-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 1.2rem 1.5rem; 
   background: rgba(36, 40, 52, 0.5);
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
+.info-item {
+  display: flex;
+  flex-direction: column; 
+  gap: 0.2rem;
+  font-size: 0.95rem;
+}
+
 .info-item strong {
-  color: #22c55e;
+  color: #4caf50; 
+  font-size: 1.05rem; 
+  margin-bottom: 0.2em; 
+}
+
+.info-item span {
+  color: #d1d5db;
+  word-break: break-word;
+}
+
+.info-item a {
+  color: #3b82f6; 
+  text-decoration: none;
+  word-break: break-all; 
+  transition: color 0.2s ease;
+}
+
+.info-item a:hover {
+  color: #60a5fa;
+  text-decoration: underline;
 }
 
 .story-description, .admin-notes, .chapters-preview-section, .story-ratings {
@@ -384,11 +446,40 @@ const handleModalImageError = (event: Event) => {
   font-size: 1.2rem;
 }
 
-.story-description p, .chapters-preview-section p {
+.story-description p, .no-content-message {
   white-space: pre-wrap; 
   word-wrap: break-word; 
   color: #d1d5db;
   line-height: 1.6;
+}
+
+.chapter-content-preview {
+  max-height: 300px; 
+  overflow-y: auto; 
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #4b5563;
+  color: #d1d5db;
+  line-height: 1.7;
+  font-size: 1rem;
+  scrollbar-width: thin; 
+  scrollbar-color: #4ade80 #2d313d; 
+}
+
+.chapter-content-preview::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chapter-content-preview::-webkit-scrollbar-track {
+  background: #2d313d;
+  border-radius: 10px;
+}
+
+.chapter-content-preview::-webkit-scrollbar-thumb {
+  background-color: #4ade80;
+  border-radius: 10px;
+  border: 2px solid #2d313d;
 }
 
 .admin-notes textarea {
@@ -401,6 +492,7 @@ const handleModalImageError = (event: Event) => {
   color: #d1d5db;
   font-family: 'Manrope', sans-serif;
   resize: vertical;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .admin-notes textarea:focus {
@@ -410,7 +502,7 @@ const handleModalImageError = (event: Event) => {
 }
 
 .story-ratings input[type="number"] {
-  width: 100px; 
+  width: 80px; 
   padding: 0.5rem;
   border-radius: 0.5rem;
   border: 1px solid #4b5563;
@@ -418,6 +510,22 @@ const handleModalImageError = (event: Event) => {
   color: #d1d5db;
   font-family: 'Manrope', sans-serif;
   margin-bottom: 10px;
+  -moz-appearance: textfield; 
+  appearance: textfield; 
+  text-align: center;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.story-ratings input[type="number"]::-webkit-outer-spin-button,
+.story-ratings input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.story-ratings input[type="number"]:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
 }
 
 .modal-actions {
@@ -436,6 +544,10 @@ const handleModalImageError = (event: Event) => {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .approve-btn {
@@ -477,30 +589,32 @@ const handleModalImageError = (event: Event) => {
 }
 
 .status-badge {
-  padding: 0.3rem 0.6rem;
-  border-radius: 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem; 
+  border-radius: 0.75rem; 
+  font-size: 0.85rem; 
   font-weight: 600;
   color: #ffffff;
   display: inline-block;
   text-align: center;
-  min-width: 80px;
+  min-width: 90px; 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .status-approved {
-  background-color: #22c55e;
+  background-color: #28a745; 
 }
 
 .status-pending {
-  background-color: #f59e0b;
+  background-color: #ffc107; 
+  color: #343a40; 
 }
 
 .status-rejected {
-  background-color: #ef4444;
+  background-color: #dc3545; 
 }
 
 @media (max-width: 768px) {
-  .admin-story-management {
+  .admin-story-management-container {
     padding: 1rem;
   }
   .page-title {
@@ -524,10 +638,13 @@ const handleModalImageError = (event: Event) => {
     max-width: 150px;
     max-height: 225px;
   }
+  .story-details-content {
+    padding: 0.5rem;
+  }
 }
 
 @media (max-width: 480px) {
-  .admin-story-management {
+  .admin-story-management-container {
     padding: 0.5rem;
   }
   .page-title {
@@ -536,6 +653,11 @@ const handleModalImageError = (event: Event) => {
   }
   .story-details-content {
     padding: 0.5rem;
+  }
+  .story-ratings input[type="number"] {
+    width: 60px;
+    padding: 0.4rem;
+    font-size: 0.9rem;
   }
 }
 </style>

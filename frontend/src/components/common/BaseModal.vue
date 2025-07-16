@@ -1,5 +1,5 @@
 <template>
-  <transition name="modal-fade">
+  <transition name="modal-fade" @after-leave="handleAfterLeave">
     <div v-if="isOpen" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -38,14 +38,23 @@ const closeModal = () => {
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden'; // Ngăn cuộn body khi modal mở
   } else {
     document.removeEventListener('keydown', handleEscape);
+    document.body.style.overflow = ''; // Cho phép body cuộn lại
   }
 });
 
 const handleEscape = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
     closeModal();
+  }
+};
+
+const handleAfterLeave = () => {
+  // Đảm bảo body cuộn lại sau khi transition kết thúc hoàn toàn
+  if (!props.isOpen) {
+    document.body.style.overflow = '';
   }
 };
 </script>
@@ -73,7 +82,6 @@ const handleEscape = (e: KeyboardEvent) => {
   width: 90%;
   max-width: 700px;
   padding: 1.5rem;
-  animation: zoomIn 0.3s ease-out;
   position: relative;
   color: #ffffff;
 }
@@ -128,15 +136,13 @@ const handleEscape = (e: KeyboardEvent) => {
   border: 2px solid #3a3e50; /* Padding around thumb */
 }
 
-/* Animations */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
+/* Animations for modal content */
+.modal-fade-enter-active .modal-content {
+  animation: zoomIn 0.3s ease-out;
 }
 
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
+.modal-fade-leave-active .modal-content {
+  animation: zoomOut 0.3s ease-in forwards; /* Apply zoomOut on leave */
 }
 
 @keyframes zoomIn {
@@ -147,6 +153,17 @@ const handleEscape = (e: KeyboardEvent) => {
   to {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes zoomOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.9); /* Scale down slightly */
+    opacity: 0; /* Fade out */
   }
 }
 
