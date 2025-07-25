@@ -2,13 +2,12 @@
   <div class="story-list-container">
     <AppHeader />
 
-    <h1 class="page-title">📚 Danh sách truyện</h1>
+    <h1 class="page-title">✨ Truyện mới cập nhật</h1>
 
     <div class="story-grid">
-      <StoryCard v-for="story in stories" :key="story.id" :story="story" />
+      <NewStoryCard v-for="story in stories" :key="story.id" :story="story" />
     </div>
 
-    <!-- Pagination -->
     <div class="pagination" v-if="totalPages > 1">
       <button
         :disabled="currentPage === 1"
@@ -31,9 +30,10 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { getPublicStories } from "@/modules/storyText/storyText.api";
-import StoryCard from "@/modules/storyText/components/StoryCard.vue";
+import NewStoryCard from "@/modules/storyText/components/NewStoryCard.vue";
 import AppHeader from "@/components/layout/AppHeader.vue";
 import AppFooter from "@/components/layout/AppFooter.vue";
+
 const stories = ref([]);
 const currentPage = ref(1);
 const totalPages = ref(1);
@@ -69,12 +69,14 @@ onMounted(() => {
   font-size: 2rem;
   color: #4caf50;
   margin-bottom: 20px;
+  text-align: center;
 }
 
 .story-grid {
   display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  justify-content: center;
 }
 
 .pagination {

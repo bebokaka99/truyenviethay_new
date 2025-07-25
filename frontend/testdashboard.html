@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - TruyenVietHay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&family=Sora:wght@500;700&display=swap");
+
+      body {
+        font-family: 'Sora', sans-serif;
+        background-color: #1a1d29;
+        color: #ffffff;
+      }
+
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .nav-button {
+        transition: all 0.3s ease;
+        background: rgba(76, 175, 80, 0.1);
+        border: 1px solid transparent;
+      }
+      .nav-button:hover {
+        background-color: rgba(76, 175, 80, 0.2);
+        border-color: #4caf50;
+        color: #4caf50;
+      }
+      .nav-button.active {
+        background-color: #4caf50;
+        color: #ffffff;
+        border-color: #4caf50;
+        font-weight: 600;
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-72 bg-[#12151f] p-6 flex flex-col space-y-4 shadow-2xl">
+      <div class="text-[#4caf50] text-2xl font-bold tracking-wide mb-6">
+        📚 TruyenVietHay
+      </div>
+      <nav id="sidebarNav" class="space-y-2">
+        <button onclick="switchTab('dashboard', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left active">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Bảng điều khiển</span>
+        </button>
+        <button onclick="switchTab('stories', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-book"></i>
+          <span>Quản lý truyện</span>
+        </button>
+        <button onclick="switchTab('chapters', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-list"></i>
+          <span>Quản lý chương</span>
+        </button>
+        <button onclick="switchTab('users', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-users"></i>
+          <span>Quản lý người dùng</span>
+        </button>
+        <button onclick="switchTab('comments', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-comment"></i>
+          <span>Bình luận</span>
+        </button>
+        <button onclick="switchTab('categories', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-layer-group"></i>
+          <span>Thể loại</span>
+        </button>
+        <button onclick="switchTab('levels', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-award"></i>
+          <span>Nhiệm vụ & Cấp độ</span>
+        </button>
+        <button onclick="switchTab('settings', this)" class="nav-button flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+          <i class="fas fa-cog"></i>
+          <span>Cài đặt hệ thống</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-8">
+      <header class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-[#4caf50]">Admin Dashboard</h1>
+        <div class="flex items-center space-x-4">
+          <span class="text-sm text-gray-400">Admin: <strong>Quỳnh</strong></span>
+          <img class="w-10 h-10 rounded-full border-2 border-[#4caf50]" src="https://i.pravatar.cc/150?img=3" alt="Avatar" />
+        </div>
+      </header>
+
+      <!-- Dashboard Tab -->
+      <div id="dashboard" class="tab-content active">
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div class="bg-[#212530] border-l-4 border-[#4caf50] p-5 rounded-xl shadow-xl">
+            <div class="text-gray-400">Tổng truyện</div>
+            <div class="text-3xl font-bold">345</div>
+          </div>
+          <div class="bg-[#212530] border-l-4 border-[#4caf50] p-5 rounded-xl shadow-xl">
+            <div class="text-gray-400">Tổng chương</div>
+            <div class="text-3xl font-bold">5.780</div>
+          </div>
+          <div class="bg-[#212530] border-l-4 border-[#4caf50] p-5 rounded-xl shadow-xl">
+            <div class="text-gray-400">Tổng người dùng</div>
+            <div class="text-3xl font-bold">1.290</div>
+          </div>
+          <div class="bg-[#212530] border-l-4 border-[#4caf50] p-5 rounded-xl shadow-xl">
+            <div class="text-gray-400">Lượt đọc tháng này</div>
+            <div class="text-3xl font-bold">157.300</div>
+          </div>
+        </section>
+
+        <div class="bg-[#212530] p-6 rounded-xl shadow-xl">
+          <h2 class="text-xl font-semibold mb-4 text-[#4caf50]">Thống kê lượt đọc</h2>
+          <div class="w-full h-64 bg-[#2c2f3c] rounded flex items-center justify-center text-gray-400">
+            Biểu đồ lượt đọc sẽ được hiển thị ở đây
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholder Tabs -->
+      <div id="stories" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Quản lý truyện</h2>
+        <p class="text-gray-400">Hiển thị danh sách và chức năng CRUD truyện tại đây.</p>
+      </div>
+      <div id="chapters" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Quản lý chương</h2>
+        <p class="text-gray-400">Hiển thị danh sách chương của truyện và thao tác quản lý chương.</p>
+      </div>
+      <div id="users" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Quản lý người dùng</h2>
+        <p class="text-gray-400">Danh sách người dùng, trạng thái hoạt động và chức năng ban/unban.</p>
+      </div>
+      <div id="comments" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Quản lý bình luận</h2>
+        <p class="text-gray-400">Duyệt, xóa hoặc phản hồi các bình luận của người dùng.</p>
+      </div>
+      <div id="categories" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Quản lý thể loại</h2>
+        <p class="text-gray-400">Thêm, sửa hoặc xoá các thể loại truyện.</p>
+      </div>
+      <div id="levels" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Hệ thống nhiệm vụ & cấp độ</h2>
+        <p class="text-gray-400">Cấu hình nhiệm vụ, tính điểm, thăng cấp người dùng.</p>
+      </div>
+      <div id="settings" class="tab-content">
+        <h2 class="text-2xl font-semibold mb-4 text-[#4caf50]">Cài đặt hệ thống</h2>
+        <p class="text-gray-400">Quản lý các thiết lập toàn hệ thống, môi trường, thông báo, v.v.</p>
+      </div>
+    </main>
+
+    <script>
+      function switchTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach((el) => {
+          el.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+
+        document.querySelectorAll('.nav-button').forEach((btn) => {
+          btn.classList.remove('active');
+        });
+        el.classList.add('active');
+      }
+    </script>
+  </body>
+</html>
